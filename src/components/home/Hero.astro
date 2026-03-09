@@ -23,8 +23,8 @@ interface Props {
 }
 
 const { avatar } = Astro.props;
-const chosenAvatar =
-	avatar ?? headshots[Math.floor(Math.random() * headshots.length)];
+const avatarUrls = headshots.map((h) => h.src);
+const defaultAvatar = avatar ?? headshots[0];
 ---
 
 <section
@@ -34,13 +34,34 @@ const chosenAvatar =
 		class="shrink-0 w-[120px] h-[140px] overflow-hidden order-first"
 		aria-hidden="true"
 	>
-		<Image
-			width={240}
-			height={280}
-			src={chosenAvatar}
-			alt="Avatar"
-			class="w-full h-full object-contain"
-		/>
+		{avatar ? (
+			<Image
+				width={240}
+				height={280}
+				src={avatar}
+				alt="Avatar"
+				class="w-full h-full object-contain"
+			/>
+		) : (
+			<>
+				<img
+					id="hero-avatar"
+					src={defaultAvatar.src}
+					alt="Avatar"
+					width={240}
+					height={280}
+					class="w-full h-full object-contain"
+				/>
+				<script define:vars={{ avatarUrls }}>
+					(function () {
+						const el = document.getElementById("hero-avatar");
+						if (el && avatarUrls?.length) {
+							el.src = avatarUrls[Math.floor(Math.random() * avatarUrls.length)];
+						}
+					})();
+				</script>
+			</>
+		)}
 	</div>
 	<div class="flex-1 w-full">
 		<h1 class="text-title font-bold text-primary mb-2 leading-tight">

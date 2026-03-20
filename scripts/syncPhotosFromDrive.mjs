@@ -82,7 +82,7 @@ function authViaBrowser() {
 			const code = url.searchParams.get("code");
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(
-				"<script>window.close()</script><p>Signed in. You can close this tab and return to the terminal.</p>"
+				"<script>window.close()</script><p>Signed in.</p>"
 			);
 			server.close();
 			if (!code) return reject(new Error("No code in callback"));
@@ -210,10 +210,46 @@ async function main() {
 		return;
 	}
 
-	await listAndDownload();
+	try {
+		await listAndDownload();
+	} catch (err) {
+		const oauthErr = err?.response?.data?.error;
+		if (oauthErr !== "invalid_grant") throw err;
+
+		// If the refresh token is revoked/expired, we can re-authorize locally.
+		// In CI/GitHub Actions there is no interactive browser auth, so we fail
+		// with actionable guidance instead.
+		const isCI = Boolean(process.env.GITHUB_ACTIONS) || Boolean(process.env.CI);
+		if (isCI) {
+			console.error(`
+GCP_REFRESH_TOKEN is expired or revoked (invalid_grant).
+
+Fix:
+  1. Generate a new refresh token locally (unset GCP_REFRESH_TOKEN, run this script, complete browser sign-in).
+  2. Update GitHub Actions secret "GCP_REFRESH_TOKEN" with the new value.
+`);
+			throw err;
+		}
+
+		console.warn("Refresh token is invalid; re-auth via browser and retry...");
+		await authViaBrowser();
+		await listAndDownload();
+	}
 }
 
 main().catch((err) => {
-	console.error(err);
+	const oauthErr = err?.response?.data?.error;
+	if (oauthErr === "invalid_grant") {
+		console.error(`
+GCP_REFRESH_TOKEN is expired or revoked (invalid_grant).
+
+Next steps (local):
+  1. Ensure you're using the correct GCP_CLIENT_ID/GCP_CLIENT_SECRET for production.
+  2. Unset or clear GCP_REFRESH_TOKEN in .env and re-run "npm run photos:sync".
+  3. Complete browser sign-in so the script saves a new refresh token.
+`);
+	} else {
+		console.error(err);
+	}
 	process.exit(1);
 });

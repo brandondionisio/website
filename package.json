@@ -7,7 +7,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "photos:sync": "node scripts/syncPhotosFromDrive.mjs"
+    "photos:sync": "node scripts/syncPhotosFromDrive.mjs",
+    "photos:thumbs": "node scripts/generatePhotoThumbs.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",

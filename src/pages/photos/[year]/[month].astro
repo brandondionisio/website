@@ -1,9 +1,10 @@
 ---
 import BaseHead from "../../../components/BaseHead.astro";
 import Nav from "../../../components/Nav.astro";
-import { AUTHOR_NAME, SITE_TITLE } from "../../../consts";
+import { SITE_TITLE } from "../../../consts";
 import {
 	getCalendarMonth,
+	getCalendarThumbSrc,
 	getPhotosByDate,
 	getMonthsWithPhotos,
 	getPreviousNextMonth,
@@ -124,6 +125,7 @@ const { prev, next } = getPreviousNextMonth(year, month);
 						calendar.weeks.map((week, weekIdx) =>
 							week.map((cell, cellIdx) => {
 								const photo = cell ? photosByDate.get(cell.dateStr) : null;
+								const thumbSrc = photo ? getCalendarThumbSrc(photo.src) : null;
 								const isLastRow = weekIdx === calendar.weeks.length - 1;
 								const isLastCol = cellIdx === 6;
 								return (
@@ -135,11 +137,23 @@ const { prev, next } = getPreviousNextMonth(year, month);
 												href={`/photos/${year}/${month}/${cell.day}`}
 												class="block w-full h-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
 											>
-												<img
-													src={photo.src}
-													alt={photo.alt ?? `Photo for ${cell.dateStr}`}
-													class="w-full h-full object-cover"
-												/>
+												{thumbSrc ? (
+													<img
+														src={thumbSrc}
+														loading="lazy"
+														decoding="async"
+														alt={photo.alt ?? `Photo for ${cell.dateStr}`}
+														class="w-full h-full object-cover"
+													/>
+												) : (
+													<img
+														src={photo.src}
+														loading="lazy"
+														decoding="async"
+														alt={photo.alt ?? `Photo for ${cell.dateStr}`}
+														class="w-full h-full object-cover"
+													/>
+												)}
 											</a>
 										) : cell ? (
 											<span class="text-xs text-secondary/60">{cell.day}</span>

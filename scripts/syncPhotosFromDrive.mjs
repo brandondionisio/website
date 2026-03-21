@@ -1,16 +1,3 @@
-/**
- * Sync Photo of the Day from a Google Drive folder.
- *
- * Prerequisites:
- * 1. In Google Cloud Console: enable "Google Drive API" for your project.
- * 2. In Credentials → your OAuth client → add redirect URI: http://localhost:3333/callback
- * 3. .env with: GCP_CLIENT_ID, GCP_CLIENT_SECRET, DRIVE_FOLDER_ID
- *    (Get DRIVE_FOLDER_ID from the folder URL: .../folders/FOLDER_ID)
- *
- * First run: opens browser to sign in; then add GCP_REFRESH_TOKEN to .env and run again.
- * Later runs: npm run photos:sync
- */
-
 import { createServer } from "http";
 import { createWriteStream, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
@@ -18,6 +5,7 @@ import { fileURLToPath } from "url";
 import { exec } from "child_process";
 import { google } from "googleapis";
 import sharp from "sharp";
+import { writePhotoThumbsForFile } from "./lib/photoThumbs.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -96,7 +84,7 @@ function authViaBrowser() {
 			}
 		});
 		server.listen(3333, () => {
-			console.log("Open this URL in your browser to sign in:\n", authUrl);
+			console.log("Open this URL to sign in:\n", authUrl);
 			const start =
 				process.platform === "darwin"
 					? "open"
@@ -149,13 +137,13 @@ async function listAndDownload() {
 
 		const ext = mimeToExt[(file.mimeType || "").toLowerCase()] ?? (file.name.includes(".") ? file.name.replace(/^.*\./, "") : "jpg");
 		let safeName = `${dateStr}.${ext}`;
-		const localPath = join(outDir, safeName);
+		let finalPath = join(outDir, safeName);
 
 		const response = await drive.files.get(
 			{ fileId: file.id, alt: "media" },
 			{ responseType: "stream" }
 		);
-		const dest = createWriteStream(localPath);
+		const dest = createWriteStream(finalPath);
 		await new Promise((resolve, reject) => {
 			response.data.pipe(dest);
 			response.data.on("end", resolve);
@@ -165,14 +153,21 @@ async function listAndDownload() {
 		if (ext === "heic" || ext === "heif") {
 			try {
 				const jpgPath = join(outDir, `${dateStr}.jpg`);
-				await sharp(localPath)
+				await sharp(finalPath)
 					.jpeg({ quality: 90 })
 					.toFile(jpgPath);
-				unlinkSync(localPath);
+				unlinkSync(finalPath);
 				safeName = `${dateStr}.jpg`;
+				finalPath = jpgPath;
 			} catch (err) {
 				console.warn("HEIC convert failed:", err.message);
 			}
+		}
+
+		try {
+			await writePhotoThumbsForFile(finalPath);
+		} catch (err) {
+			console.warn("Thumb generation failed:", safeName, err?.message ?? err);
 		}
 
 		const nameWithoutExt = file.name.replace(/\.[^.]+$/, "");
@@ -216,38 +211,20 @@ async function main() {
 		const oauthErr = err?.response?.data?.error;
 		if (oauthErr !== "invalid_grant") throw err;
 
-		// If the refresh token is revoked/expired, we can re-authorize locally.
-		// In CI/GitHub Actions there is no interactive browser auth, so we fail
-		// with actionable guidance instead.
 		const isCI = Boolean(process.env.GITHUB_ACTIONS) || Boolean(process.env.CI);
 		if (isCI) {
-			console.error(`
-GCP_REFRESH_TOKEN is expired or revoked (invalid_grant).
-
-Fix:
-  1. Generate a new refresh token locally (unset GCP_REFRESH_TOKEN, run this script, complete browser sign-in).
-  2. Update GitHub Actions secret "GCP_REFRESH_TOKEN" with the new value.
-`);
 			throw err;
 		}
 
-		console.warn("Refresh token is invalid; re-auth via browser and retry...");
+		console.warn("Refresh token is invalid and re-running auth");
 		await authViaBrowser();
 		await listAndDownload();
 	}
 }
 
 main().catch((err) => {
-	const oauthErr = err?.response?.data?.error;
-	if (oauthErr === "invalid_grant") {
-		console.error(`
-GCP_REFRESH_TOKEN is expired or revoked (invalid_grant).
-
-Next steps (local):
-  1. Ensure you're using the correct GCP_CLIENT_ID/GCP_CLIENT_SECRET for production.
-  2. Unset or clear GCP_REFRESH_TOKEN in .env and re-run "npm run photos:sync".
-  3. Complete browser sign-in so the script saves a new refresh token.
-`);
+	if (err?.response?.data?.error === "invalid_grant") {
+		console.error("invalid grant, GCP_REFRESH_TOKEN expired or revoked");
 	} else {
 		console.error(err);
 	}

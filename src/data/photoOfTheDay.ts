@@ -1,4 +1,3 @@
-import demoImage from "../assets/headshots/smile.png";
 import syncedPhotos from "./dailyPhotos.json";
 
 export interface DailyPhoto {
@@ -7,35 +6,16 @@ export interface DailyPhoto {
 	alt?: string;
 }
 
-/** Demo entries when no Drive sync has been run. */
-const demoPhotos: DailyPhoto[] = [
-	{ date: "2026-03-08", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-07", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-06", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-05", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-04", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-03", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-02", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-03-01", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-28", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-27", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-26", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-25", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-24", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-23", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-22", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-21", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-20", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-19", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-18", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-17", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-16", src: demoImage.src, alt: "Street at night" },
-	{ date: "2026-02-15", src: demoImage.src, alt: "Street at night" },
-];
+export function getCalendarThumbSrc(photoSrc: string): string | null {
+	const m = photoSrc.match(/^\/photos\/([^/]+)$/);
+	if (!m) return null;
+	const filePart = m[1];
+	if (filePart.startsWith("thumbs/")) return null;
+	const stem = filePart.replace(/\.[^.]+$/, "");
+	return `/photos/thumbs/${stem}.jpg`;
+}
 
-/** Synced from Drive when you run `npm run photos:sync`; otherwise demo. */
-export const dailyPhotos: DailyPhoto[] =
-	Array.isArray(syncedPhotos) && syncedPhotos.length > 0 ? syncedPhotos : demoPhotos;
+export const dailyPhotos: DailyPhoto[] = syncedPhotos;
 
 export function getPhotosByDate(): Map<string, DailyPhoto> {
 	const map = new Map<string, DailyPhoto>();

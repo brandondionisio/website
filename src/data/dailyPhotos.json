@@ -32,7 +32,8 @@
   },
   {
     "date": "2026-03-15",
-    "src": "/photos/2026-03-15.jpg"
+    "src": "/photos/2026-03-15.jpg",
+    "alt": "Fritzel’s New Orleans"
   },
   {
     "date": "2026-03-16",
@@ -49,6 +50,11 @@
   {
     "date": "2026-03-19",
     "src": "/photos/2026-03-19.jpg"
+  },
+  {
+    "date": "2026-03-20",
+    "src": "/photos/2026-03-20.jpg",
+    "alt": "Mourning dove hairdo"
   },
   {
     "date": "2026-03-21",
